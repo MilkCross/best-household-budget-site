@@ -9,7 +9,7 @@
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { cpSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-frontend.ts';
@@ -30,4 +30,7 @@ writeFileSync(join(out, 'dossier.json'), dossier);
 
 // Ledgerly's own addition: say what went into the package so a run is easy to eyeball.
 const countFiles = (dir: string): number => readdirSync(dir, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? countFiles(join(dir, e.name)) : 1), 0);
+const sumBytes = (dir: string): number => readdirSync(dir, { withFileTypes: true }).reduce((n, e) => n + (e.isDirectory() ? sumBytes(join(dir, e.name)) : statSync(join(dir, e.name)).size), 0);
+const appBytes = sumBytes(join(out, 'app'));
 console.log(`Ledgerly packed ${countFiles(join(out, 'app'))} app files and ${countFiles(join(out, 'screenshots'))} screenshots; dossier.json is ${Buffer.byteLength(dossier)} bytes.`);
+console.log(`Ledgerly size report: app/ totals ${appBytes} bytes (${(appBytes / 1024).toFixed(1)} KiB) across the copied files; dossier.json is ${Buffer.byteLength(dossier)} bytes (${((Buffer.byteLength(dossier) / 1048576) * 100).toFixed(1)}% of the 1 MiB mark).`);
