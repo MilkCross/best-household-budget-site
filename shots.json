@@ -1,0 +1,6 @@
+[
+  { "file": "1-dashboard.png", "path": "index.html", "viewport": { "width": 1280, "height": 1280 }, "note": "Dashboard: month KPIs, category donut, next bills, budget vs actual, goal in focus" },
+  { "file": "2-tracker.png", "path": "tracker.html", "viewport": { "width": 1280, "height": 900 }, "note": "Expense tracker: add form, category chart, totals and entries with running total" },
+  { "file": "3-calculators.png", "path": "calculators.html", "viewport": { "width": 1280, "height": 900 }, "note": "Calculators: $300,000 at 5% for 30 years shows $1,610.46 a month, beside compound savings" },
+  { "file": "4-dashboard-phone.png", "path": "index.html", "viewport": { "width": 390, "height": 844 }, "note": "Dashboard on a phone" }
+]
