@@ -17,8 +17,7 @@ export function render(main) {
     $('#dash-body', main).innerHTML = `
       <section class="kpis" aria-label="Month totals">
         <div class="kpi"><span class="kpi-label">Income</span><span class="kpi-value">${money(s.income)}</span><span class="kpi-sub">${state.income.map((i) => esc(i.name.split(' ')[0])).join(' + ')}</span></div>
-        <div class="kpi"><span class="kpi-label">Spending</span><span class="kpi-value">${money(s.spent)}</span><span class="kpi-sub">${percent(s.income ? s.spent / s.income : 0, 0)} of income</span></div>
-        <div class="kpi accent"><span class="kpi-label">Remaining</span><span class="kpi-value ${s.remaining < 0 ? 'neg' : ''}">${money(s.remaining)}</span><span class="kpi-sub">${money(s.income)} − ${money(s.spent)}</span></div>
+        <div class="kpi accent"><span class="kpi-label">Remaining</span><span class="kpi-value ${s.remaining < 0 ? 'neg' : ''}">${money(s.remaining)}</span><span class="kpi-sub">${money(s.income)} income − ${money(s.spent)} spent</span></div>
         <div class="kpi"><span class="kpi-label">Savings rate</span><span class="kpi-value">${percent(s.savingsRate)}</span><span class="kpi-sub">${s.savingsRate >= 0.2 ? 'At or above the 20% guide' : 'Below the 20% guide'}</span></div>
       </section>
       ${tip ? `<p class="callout warn"><strong>${esc(tip.cat.name)}</strong> is ${money(tip.amount)} over its budget this month. <a href="planner.html">Review the planner</a></p>` : '<p class="callout">Every category is within budget this month.</p>'}

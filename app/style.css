@@ -237,6 +237,7 @@ table .num { text-align: right; }
   .dash-grid, .plan-grid, .goal-grid { grid-template-columns: 1fr; }
   .kpis, .kpis:has(> :nth-child(3):last-child) { grid-template-columns: 1fr 1fr; gap: .7rem; }
   .kpi { padding: .8rem .9rem; }
+  .kpis:has(> :nth-child(3):last-child) .kpi.accent { grid-column: 1 / -1; order: -1; }
   .cat-chart { grid-template-columns: 1fr; justify-items: center; }
   .legend { width: 100%; }
   .bva li { grid-template-columns: 1fr auto; row-gap: .3rem; padding-bottom: .5rem; border-bottom: 1px solid var(--line); }

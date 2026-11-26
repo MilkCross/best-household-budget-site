@@ -13,7 +13,7 @@ the browser's localStorage, seeded once with a realistic two-income sample house
 
 | Page | What it does |
 | --- | --- |
-| `index.html` Dashboard | Month switcher; income, spending, remaining and savings-rate cards; category donut; budget-vs-actual bars; next bills due; goal in focus |
+| `index.html` Dashboard | Month switcher; income, remaining (income − spent) and savings-rate cards; category donut; budget-vs-actual bars; next bills due; goal in focus |
 | `planner.html` Budget | Editable monthly budget per category with spent-so-far bars and over/near/under states; editable incomes; 50/30/20 panel computed from the household's own income and spending |
 | `tracker.html` Expenses | Add, edit, delete (with undo) entries; month switcher; category filter (select or tap the chart legend); running totals; live category chart; CSV export; reset to sample data |
 | `goals.html` Goals | Goal cards with target, saved, progress, and the monthly contribution needed by the target date; add money, withdraw, delete, and an add-goal form with a live preview |
