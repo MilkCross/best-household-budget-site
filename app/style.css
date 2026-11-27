@@ -231,8 +231,8 @@ table .num { text-align: right; }
 /* phone */
 @media (max-width: 680px) {
   .bar { flex-direction: column; align-items: stretch; gap: .4rem; padding-bottom: .4rem; }
-  .site-header nav { overflow-x: auto; scrollbar-width: none; padding-bottom: .3rem; margin-inline: -1rem; padding-inline: 1rem; }
-  .site-header nav a { padding: .7rem 1rem; min-height: 44px; display: flex; align-items: center; }
+  .site-header nav { display: grid; grid-template-columns: repeat(3, 1fr); padding-bottom: .3rem; }
+  .site-header nav a { padding: .5rem; min-height: 44px; display: flex; align-items: center; justify-content: center; }
   .brand small { display: none; }
   .dash-grid, .plan-grid, .goal-grid { grid-template-columns: 1fr; }
   .kpis, .kpis:has(> :nth-child(3):last-child) { grid-template-columns: 1fr 1fr; gap: .7rem; }
