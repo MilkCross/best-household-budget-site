@@ -4,7 +4,7 @@ import { summary, upcomingBills } from './budget.js';
 import { categoryChart } from './charts.js';
 import { budgetBar, budgetStatus, monthSwitcher } from './ui.js';
 import { goalCard, goalStatus } from './goals.js';
-import { $, esc, money, moneyShort, percent, monthLabel, dateLabel, daysInMonth, today, monthOf } from './util.js';
+import { $, esc, money, moneyShort, percent, monthLabel, dateLabel, daysInMonth, today, monthOf, addMonths } from './util.js';
 
 
 // Decision devices, all computed from the stored entries, budgets and bills.
@@ -20,7 +20,7 @@ function pace(state, s, key) {
   return { M, D, bills, left, daysLeft, per: Math.max(0, left - bills) / daysLeft, cum, plan, gap };
 }
 function paceChart(p, budget) {
-  const W = 640, H = 300, l = 62, r = 16, t = 16, b = 44, iw = W - l - r, ih = H - t - b;
+  const W = 640, H = 210, l = 62, r = 16, t = 16, b = 44, iw = W - l - r, ih = H - t - b;
   const top = Math.max(budget, ...p.cum), x = (d) => l + (iw * (d - 1)) / (p.M - 1), y = (v) => t + ih * (1 - v / top);
   const line = p.cum.slice(0, p.D).map((v, i) => `${i ? 'L' : 'M'}${x(i + 1).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
   const grid = [0, .5, 1].map((f) => `<line x1="${l}" x2="${W - r}" y1="${y(top * f)}" y2="${y(top * f)}" stroke="#e4dfd3"/><text x="${l - 8}" y="${y(top * f) + 6}" text-anchor="end" font-size="18" fill="#55655e">${moneyShort(top * f)}</text>`).join('');
@@ -40,14 +40,36 @@ function actions(state, s) {
   });
 }
 
+// What-if layer. The current pace is what the first goal needs each month to land on its date (goalStatus.perMonth).
+// Months are shown to one decimal so a small extra amount still moves the result.
+const monthsToFill = (gap, rate) => (gap <= 0 ? 0 : rate > 0 ? Math.round((gap / rate) * 10) / 10 : null);
+const fmtMonths = (n) => `${n.toFixed(1)} months`;
+function whatIf(state, s, acts) {
+  const goal = state.goals[0];
+  if (!goal) return null;
+  const st = goalStatus(goal), gap = st.remaining, base = st.perMonth, top = acts[0], was = monthsToFill(gap, base);
+  const line = (extra) => {
+    const n = monthsToFill(gap, base + extra);
+    if (gap <= 0) return `${esc(goal.name)} has already reached its ${money(goal.target)} goal.`;
+    if (n === null) return `Add some savings and ${esc(goal.name)} starts moving toward its ${money(goal.target)} goal.`;
+    return `${esc(goal.name)} reaches its ${money(goal.target)} goal in <strong>${fmtMonths(n)}</strong> (${monthLabel(addMonths(monthOf(today()), Math.ceil(n)))})${was === null ? '' : ` — <strong>${fmtMonths(Math.round((was - n) * 10) / 10)}</strong> sooner than the current pace`}.`;
+  };
+  const habit = top && gap > 0 ? (() => {
+    const n = monthsToFill(gap, base + top.o.over);
+    return `${esc(top.o.c.name)} back to budget frees <strong>${money(top.o.over)}</strong> a month — <strong>${money(top.o.over * 12)}</strong> a year toward the ${money(gap)} ${esc(goal.name)} gap${n !== null && was !== null && was > n ? `, bringing the goal ${fmtMonths(Math.round((was - n) * 10) / 10)} sooner` : ''}.`;
+  })() : '';
+  return { base, line, habit, goal };
+}
+
 export function render(main) {
+  let extra = 5000;
   main.innerHTML = '<div class="page-head row"><div><h1>Your month at a glance</h1><p class="lede" id="dash-lede"></p></div><div id="dash-month"></div></div><div id="dash-body"></div>';
   const draw = () => {
     const state = get(), key = getMonth(), s = summary(state, key);
     $('#dash-lede', main).textContent = `${monthLabel(key)} · ${s.entries.length} entries from ${state.income.length} incomes`;
     const bills = upcomingBills(state);
     const goal = state.goals[0];
-    const p = pace(state, s, key), acts = actions(state, s), bill = bills[0];
+    const p = pace(state, s, key), acts = actions(state, s), bill = bills[0], wi = whatIf(state, s, acts);
     const tight = CATEGORIES.map((c) => ({ c, left: (state.budgets[c.id] ?? 0) - s.byCat[c.id], b: state.budgets[c.id] ?? 0 })).filter((r) => r.b && r.left > 0 && r.left / r.b < 0.2).sort((a, b) => a.left / a.b - b.left / b.b)[0];
     const more = [bill && `<li><span><strong>${esc(bill.name)}</strong> ${money(bill.cents)} is due ${bill.inDays === 0 ? 'today' : `in ${bill.inDays} ${bill.inDays === 1 ? 'day' : 'days'}`} (${dateLabel(bill.date)})</span><a class="btn small" href="tracker.html">Log it</a></li>`, tight && `<li><span><strong>${esc(tight.c.name)}</strong> has ${money(tight.left)} left of ${money(tight.b)}</span><a class="btn small" href="planner.html">Adjust budget</a></li>`].filter(Boolean).slice(0, 3 - acts.length);
     const rows = CATEGORIES.map((c) => ({ c, spent: s.byCat[c.id], budget: state.budgets[c.id] ?? 0 }));
@@ -58,7 +80,7 @@ export function render(main) {
         <div class="kpi accent"><span class="kpi-label">Remaining</span><span class="kpi-value ${s.remaining < 0 ? 'neg' : ''}">${money(s.remaining)}</span><span class="kpi-sub">${money(s.income)} − ${money(s.spent)}</span></div>
         <div class="kpi"><span class="kpi-label">Savings rate</span><span class="kpi-value">${percent(s.savingsRate)}</span><span class="kpi-sub">${s.savingsRate >= 0.2 ? 'At or above the 20% guide' : 'Below the 20% guide'}</span></div>
       </section>
-      <style>.strip { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.1rem; background: var(--accent-soft); }.strip-fig { font-size: 2.6rem; line-height: 1.1; color: var(--accent); }.strip-unit { font-size: 1.25rem; font-weight: 650; }.strip div > span { display: block; } .strip div > .strip-unit { display: inline; }.strip-math { margin: 0; font-size: 1.1rem; }.pace-row { margin-top: 1.1rem; } .pace-svg { width: 100%; height: auto; display: block; }.verdict { margin: .5rem 0 0; font-size: 1.1rem; }.acts { list-style: none; margin: 0; padding: 0; display: grid; gap: .8rem; }.acts li { display: grid; gap: .4rem; justify-items: start; padding-bottom: .8rem; border-bottom: 1px solid var(--line); font-size: 1.05rem; }.acts li:last-child { border: 0; }</style>
+      <style>.strip { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1.1rem; background: var(--accent-soft); }.strip-fig { font-size: 2.6rem; line-height: 1.1; color: var(--accent); }.strip-unit { font-size: 1.25rem; font-weight: 650; }.strip div > span { display: block; } .strip div > .strip-unit { display: inline; }.strip-math { margin: 0; font-size: 1.1rem; }.pace-row { margin-top: 1.1rem; } .pace-svg { width: 100%; height: auto; display: block; }.verdict { margin: .5rem 0 0; font-size: 1.1rem; }.acts { list-style: none; margin: 0; padding: 0; display: grid; gap: .8rem; }.acts li { display: grid; gap: .4rem; justify-items: start; padding-bottom: .8rem; border-bottom: 1px solid var(--line); font-size: 1.05rem; }.acts li:last-child { border: 0; }.whatif { margin-top: 1.1rem; }.whatif h2 { margin-bottom: .5rem; }.wi-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; font-weight: 650; }.wi-row output { margin-left: auto; font-size: 1.25rem; color: var(--accent); }.wi-row input { flex: 1 1 12rem; min-width: 0; margin: 0; accent-color: var(--accent); }.whatif p { margin: .35rem 0 0; font-size: 1.05rem; }</style>
       <section class="card strip" aria-label="Safe to spend"><div><span class="kpi-label">Safe to spend</span><strong class="strip-fig">${money(p.per)}</strong><span class="strip-unit"> per day · ${p.daysLeft} days left</span></div>
         <p class="strip-math">(${money(Math.max(0, p.left))} left − ${money(p.bills)} bills due) ÷ ${p.daysLeft} days</p></section>
       <div class="dash-grid pace-row">
@@ -66,6 +88,8 @@ export function render(main) {
         <p class="verdict"><strong>${Math.abs(p.gap) < 100 ? 'On pace' : `${money(Math.abs(p.gap))} ${p.gap > 0 ? 'ahead of' : 'behind'} pace`}</strong> on day ${p.D} of ${p.M}. <span class="muted">Green: spent so far. Dashed: even pace to the ${money(s.budgetTotal)} budget.</span></p></section>
       <section class="card"><h2>Next actions</h2>${acts.length + more.length ? `<ul class="acts">${acts.map((a, i) => `<li><span><strong>${esc(a.o.c.name)}</strong> is ${money(a.o.over)} over${a.from ? ` — cover ${a.amt < a.o.over ? `${money(a.amt)} of it ` : 'it '}from ${esc(a.from.c.name)}` : ''}</span>${a.from ? `<button class="btn small" data-act="${i}">Move ${money(a.amt)}</button>` : ''}</li>`).join('')}${more.join('')}</ul>` : '<p class="empty">Every category is within budget. Nothing to move.</p>'}</section>
       </div>
+      <section class="card whatif" aria-label="What if"><h2>What if?</h2>${wi ? `<div class="wi-row"><label for="wi-extra">Extra to savings each month</label><input id="wi-extra" type="range" min="0" max="20000" step="500" value="${extra}"><output id="wi-out" for="wi-extra">${money(extra)}</output></div>
+        <p id="wi-line" aria-live="polite">${wi.line(extra)}</p>${wi.habit ? `<p id="wi-habit">${wi.habit}</p>` : ''}<p class="muted" id="wi-base">Current pace: ${money(wi.base)} a month, what ${esc(wi.goal.name)} needs to land on ${dateLabel(wi.goal.date, true)}.</p>` : '<p class="empty">Add a savings goal to try what-if numbers.</p>'}</section>
       <div class="dash-grid">
         <section class="card span-2"><h2>Where the money went</h2>${categoryChart(s.byCat, { bars: false })}</section>
         <section class="card"><h2>Next bills due</h2>
@@ -77,6 +101,12 @@ export function render(main) {
           ${state.goals.length > 1 ? `<ul class="goal-mini" aria-label="Other goals">${state.goals.slice(1).map((g) => { const st = goalStatus(g); return `<li><span>${esc(g.name)}</span><span class="muted">${money(g.saved)} of ${money(g.target)}</span><span class="progress thin"><span style="width:${(st.progress * 100).toFixed(1)}%"></span></span></li>`; }).join('')}</ul>` : ''}</section>
       </div>`;
   };
+  main.addEventListener('input', (e) => {
+    if (e.target.id !== 'wi-extra') return;
+    const state = get(), wi = whatIf(state, summary(state, getMonth()), actions(state, summary(state, getMonth())));
+    extra = Number(e.target.value);
+    $('#wi-out', main).textContent = money(extra); $('#wi-line', main).innerHTML = wi.line(extra);
+  });
   main.addEventListener('click', (e) => {
     const b = e.target.closest('[data-act]');
     if (!b) return;
